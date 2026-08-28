@@ -20,6 +20,8 @@
     this.wheelRadius = 18;
 
     this.onGroundCount = 0;
+    this.wasOnGround = false;
+    this.airborneTime = 0;
     this.crashed = false;
     this.finished = false;
     this.startTime = 0;
@@ -36,6 +38,10 @@
     this.crashed = false;
     this.finished = false;
     this.elapsed = 0;
+    this.onGroundCount = 0;
+    this.wasOnGround = false;
+    this.airborneTime = 0;
+    this._jumpLatch = false;
     this.startTime = performance.now();
     this.worldBottom = level.groundY + 620;
 
@@ -210,8 +216,13 @@
       this.throttle = 0;
     }
 
+    if (!onGround) {
+      if (input.gas) this.chassis.torque -= 0.018 * s.acceleration;
+      if (input.brake) this.chassis.torque += 0.014 * s.braking;
+    }
+
     // Lean (chassis torque) -----------------------------------------
-    var lean = 0.055;
+    var lean = onGround ? 0.060 : 0.105;
     if (input.leanFwd) this.chassis.torque += lean;   // nose down (clockwise)
     if (input.leanBack) this.chassis.torque -= lean;  // nose up (anti-clockwise)
 
@@ -230,6 +241,7 @@
   GameEngine.prototype.step = function (fixedDeltaMs) {
     if (!this.engine) return;
     M.Engine.update(this.engine, fixedDeltaMs);
+    this._updateAirState(fixedDeltaMs);
 
     if (!this.finished && !this.crashed) {
       this.elapsed = (performance.now() - this.startTime) / 1000;
@@ -239,6 +251,29 @@
     // Reached finish
     if (this.chassis && !this.crashed && this.chassis.position.x >= this.level.finishX) {
       this.finished = true;
+    }
+  };
+
+  GameEngine.prototype._updateAirState = function (fixedDeltaMs) {
+    if (!this.chassis) return;
+    var onGround = this.isOnGround();
+
+    if (!onGround) {
+      this.airborneTime += fixedDeltaMs;
+    } else if (!this.wasOnGround) {
+      this._checkLandingCrash();
+      this.airborneTime = 0;
+    }
+
+    this.wasOnGround = onGround;
+  };
+
+  GameEngine.prototype._checkLandingCrash = function () {
+    var hardImpact = this.chassis.velocity.y > 8.5;
+    var spinning = Math.abs(this.chassis.angularVelocity) > 0.24;
+    var badAngle = Math.abs(normalizeAngle(this.chassis.angle)) > 1.35;
+    if (this.airborneTime > 220 && (hardImpact || spinning || badAngle)) {
+      this.crashed = true;
     }
   };
 
@@ -279,6 +314,12 @@
     }
     this.engine = null;
   };
+
+  function normalizeAngle(a) {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  }
 
   global.GameEngine = GameEngine;
 })(window);

@@ -71,7 +71,7 @@
     var completed = Save.countCompleted();
     r.neonText(completed + ' / 100 LEVELS COMPLETE', w / 2, by + gap * 3 + 6, 13, '#8fd0ff', 'center');
 
-    r.neonText('Arrows/WASD to ride  \u00B7  Q/E lean  \u00B7  R restart', w / 2, h - 24, 12, '#5f7fb0', 'center');
+    r.neonText('\u2191 gas  \u00B7  \u2193 brake  \u00B7  \u2190/\u2192 tilt  \u00B7  Space jump  \u00B7  R restart', w / 2, h - 24, 12, '#5f7fb0', 'center');
   };
 
   // ================= BIKE SELECT / GARAGE =================

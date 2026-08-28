@@ -23,6 +23,12 @@
               'Sprint', 'Gauntlet', 'Horizon', 'Meltdown'];
 
   var COLORS = ['#00ff88', '#00ffff', '#ff00aa', '#bf00ff', '#ffee00', '#ff6a00', '#39ff14', '#ff2d55'];
+  var SURFACE_PALETTES = [
+    { dirt: '#6c4b2f', dirtDark: '#3a2619', sand: '#b9915e', accent: '#8a5c35' },
+    { dirt: '#7b5630', dirtDark: '#402816', sand: '#c6a06b', accent: '#8d653a' },
+    { dirt: '#705134', dirtDark: '#372515', sand: '#c39d5e', accent: '#93653b' },
+    { dirt: '#5f4530', dirtDark: '#2d1f16', sand: '#af8752', accent: '#78512e' }
+  ];
 
   function levelName(id, rng) {
     var a = ADJ[Math.floor(rng() * ADJ.length)];
@@ -37,6 +43,10 @@
 
   // ---- Terrain feature builders. Each returns the new {x, y} cursor. ----
 
+  function clampGroundY(y) {
+    return Math.max(GROUND_Y - 260, Math.min(GROUND_Y + 120, y));
+  }
+
   function addFlat(pts, x, y, width) {
     var steps = Math.max(2, Math.round(width / STEP));
     for (var i = 1; i <= steps; i++) pts.push([x + (i / steps) * width, y]);
@@ -47,7 +57,7 @@
     var humps = 2 + Math.floor(rng() * 4);
     for (var h = 0; h < humps; h++) {
       var w = 120 + rng() * 130;
-      var amp = 20 + diff * 5 + rng() * 30;
+      var amp = 28 + diff * 6 + rng() * 36;
       var steps = Math.max(6, Math.round(w / STEP));
       for (var i = 1; i <= steps; i++) {
         var f = i / steps;
@@ -59,12 +69,15 @@
   }
 
   function addBumps(pts, x, y, rng, diff) {
-    var count = 4 + Math.floor(rng() * 6);
-    var w = 34 + rng() * 18;
+    var count = 5 + Math.floor(rng() * 7);
+    var w = 30 + rng() * 16;
     for (var i = 0; i < count; i++) {
-      var amp = 8 + rng() * (10 + diff * 2);
-      pts.push([x + w * 0.5, y - amp]);
-      pts.push([x + w, y]);
+      var amp = 10 + rng() * (12 + diff * 3);
+      var settle = clampGroundY(y + (rng() - 0.5) * (6 + diff * 2));
+      pts.push([x + w * 0.35, y - amp * 0.7]);
+      pts.push([x + w * 0.65, y - amp]);
+      pts.push([x + w, settle]);
+      y = settle;
       x += w;
     }
     return { x: x, y: y };
@@ -93,26 +106,28 @@
     var r = addFlat(pts, x, y, flat);
     x = r.x;
     // clamp so we don't drift off screen
-    y = Math.max(GROUND_Y - 260, Math.min(GROUND_Y + 120, y));
+    y = clampGroundY(y);
     return { x: x, y: y };
   }
 
   function addRampJump(pts, x, y, rng, diff) {
-    // launch ramp -> gap -> landing (gap auto-detected by big horizontal distance)
-    var rampW = 100 + rng() * 70;
-    var rampH = 50 + diff * 9 + rng() * 45;
+    var rampW = 96 + rng() * 56;
+    var rampH = 58 + diff * 11 + rng() * 52;
     var steps = Math.max(5, Math.round(rampW / STEP));
     for (var i = 1; i <= steps; i++) {
       var f = i / steps;
-      pts.push([x + f * rampW, y - rampH * f]);
+      pts.push([x + f * rampW, y - rampH * Math.pow(f, 1.18)]);
     }
     var topX = x + rampW, topY = y - rampH;
-    var gapW = 110 + diff * 22 + rng() * 130;
-    var landY = y + (rng() < 0.4 ? 30 : 0);
-    // Landing ramp (downslope) for a smooth touchdown
-    var landRamp = 70 + rng() * 50;
-    pts.push([topX + gapW, landY]);
-    var r = addFlat(pts, topX + gapW, landY, landRamp);
+    var gapW = 96 + diff * 24 + rng() * 120;
+    var landY = clampGroundY(y + (rng() - 0.35) * (34 + diff * 9));
+    var landRamp = 84 + rng() * 64;
+    pts.push([topX + gapW, landY + 26]);
+    for (var j = 1; j <= 4; j++) {
+      var lf = j / 4;
+      pts.push([topX + gapW + lf * landRamp, landY + 26 - 26 * lf]);
+    }
+    var r = addFlat(pts, topX + gapW + landRamp, landY, 34 + rng() * 40);
     return { x: r.x, y: landY };
   }
 
@@ -132,7 +147,7 @@
     var stepW = 60 + rng() * 40;
     for (var i = 0; i < count; i++) {
       y -= stepH * dir;
-      y = Math.max(GROUND_Y - 260, Math.min(GROUND_Y + 120, y));
+      y = clampGroundY(y);
       var r = addFlat(pts, x, y, stepW);
       x = r.x;
     }
@@ -140,17 +155,51 @@
   }
 
   function addLoop(pts, x, y, rng, diff) {
-    // A full loop-the-loop circle tangent to the current ground height.
-    var R = 74 + diff * 4 + rng() * 24;
-    var cx = x, cy = y - R;
-    var startA = 90, endA = -270, dA = -14;
+    var runIn = addFlat(pts, x, y, 44 + rng() * 32);
+    x = runIn.x;
+    var R = 66 + diff * 5 + rng() * 16;
+    var cx = x + R * 0.1, cy = y - R;
+    var startA = 112, endA = -248, dA = -12;
     for (var a = startA; a >= endA; a += dA) {
       var rad = a * Math.PI / 180;
       pts.push([cx + R * Math.cos(rad), cy + R * Math.sin(rad)]);
     }
-    // exit continues at ground level just past the loop
-    var r = addFlat(pts, x, y, 90 + rng() * 40);
+    pts.push([x + R * 1.65, y - 10]);
+    pts.push([x + R * 2.1, y]);
+    var r = addFlat(pts, x + R * 2.1, y, 42 + rng() * 36);
     return { x: r.x, y: y };
+  }
+
+  function addRhythmSection(pts, x, y, rng, diff) {
+    var count = 4 + Math.floor(rng() * 3);
+    for (var i = 0; i < count; i++) {
+      var span = 70 + rng() * 42;
+      var peak = 20 + diff * 4 + rng() * 20;
+      var lip = 8 + rng() * (6 + diff * 2);
+      pts.push([x + span * 0.28, y - peak * 0.45]);
+      pts.push([x + span * 0.58, y - peak]);
+      pts.push([x + span * 0.78, y - peak + lip]);
+      var settle = clampGroundY(y + (rng() - 0.5) * (18 + diff * 4));
+      pts.push([x + span, settle]);
+      x += span;
+      y = settle;
+    }
+    return { x: x, y: y };
+  }
+
+  function addDropSection(pts, x, y, rng, diff) {
+    var run = addFlat(pts, x, y, 50 + rng() * 36);
+    x = run.x;
+    var drop = 44 + diff * 6 + rng() * 40;
+    var downW = 52 + rng() * 30;
+    pts.push([x + downW * 0.28, y - 8]);
+    pts.push([x + downW * 0.56, y + drop * 0.45]);
+    pts.push([x + downW, y + drop]);
+    x += downW;
+    y = clampGroundY(y + drop);
+    pts.push([x + 28, y - 10]);
+    pts.push([x + 58, y]);
+    return { x: x + 58, y: y };
   }
 
   function buildDecorations(pts, rng, color, diff) {
@@ -175,6 +224,7 @@
     var rng = mulberry32(id * 2654435761 + 12345);
     var diff = difficultyFor(id);
     var color = COLORS[(id + diff) % COLORS.length];
+    var surface = SURFACE_PALETTES[id % SURFACE_PALETTES.length];
 
     var pts = [];
     var startX = 260;
@@ -189,12 +239,12 @@
     // Feature pool weighted by difficulty
     function pickFeature() {
       var pool = [];
-      pool.push('hills', 'hills', 'bumps');
-      if (diff >= 2) pool.push('valley', 'plateau');
-      if (diff >= 3) pool.push('ramp', 'stairs');
-      if (diff >= 4) pool.push('gap', 'ramp');
-      if (diff >= 5) pool.push('loop', 'ramp', 'gap');
-      if (diff >= 7) pool.push('loop', 'gap', 'ramp');
+      pool.push('hills', 'bumps', 'bumps');
+      if (diff >= 2) pool.push('valley', 'plateau', 'rhythm');
+      if (diff >= 3) pool.push('ramp', 'stairs', 'drop');
+      if (diff >= 4) pool.push('gap', 'ramp', 'rhythm');
+      if (diff >= 5) pool.push('loop', 'ramp', 'gap', 'drop');
+      if (diff >= 7) pool.push('loop', 'gap', 'ramp', 'rhythm', 'loop');
       return pool[Math.floor(rng() * pool.length)];
     }
 
@@ -210,9 +260,10 @@
       else if (f === 'gap') cur = addGap(pts, cur.x, cur.y, rng, diff);
       else if (f === 'stairs') cur = addStairs(pts, cur.x, cur.y, rng, diff);
       else if (f === 'loop') cur = addLoop(pts, cur.x, cur.y, rng, diff);
-      // small connective flat
-      cur = addFlat(pts, cur.x, cur.y, 40 + rng() * 40);
-      cur.y = Math.max(GROUND_Y - 240, Math.min(GROUND_Y + 110, cur.y));
+      else if (f === 'rhythm') cur = addRhythmSection(pts, cur.x, cur.y, rng, diff);
+      else if (f === 'drop') cur = addDropSection(pts, cur.x, cur.y, rng, diff);
+      cur = addFlat(pts, cur.x, cur.y, 18 + rng() * 28);
+      cur.y = clampGroundY(cur.y);
     }
 
     // Finish platform (flat run to finish)
@@ -236,6 +287,7 @@
       finishX: finishX,
       finishY: finishY,
       color: color,
+      surface: surface,
       decorations: decorations,
       parTime: parTime,
       coinsReward: 50 + diff * 18,

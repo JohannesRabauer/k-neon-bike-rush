@@ -1,15 +1,15 @@
 # Neon Bike Rush
 
-A 2D physics-based motorcycle skill game with a **Tron: Legacy** neon aesthetic. Ride
-across 100 procedurally-generated neon tracks, master 4 unique bikes, earn coins and
+A 2D physics-based motorcycle skill game with a **Tron: Legacy** sky and grounded dirt
+tracks. Ride across 100 procedurally-generated courses, master 4 unique bikes, earn coins and
 upgrade your machine. Pure HTML5 Canvas + JavaScript, powered by **Matter.js**.
 
 ## Features
 
-- **100 levels** – gentle hills, ramps, gaps, jumps and full loop-the-loops that get
-  harder as you climb the ladder (difficulty 1–10).
+- **100 levels** – dirt hills, rhythm sections, drops, ramps, gaps, jumps and loop-the-loops
+  that get harder as you climb the ladder (difficulty 1–10).
 - **4 motorcycles** – Crimson Flash, Teal Storm, Violet Phantom and Solar Blaze, each
-  drawn entirely on canvas with its own stats.
+  drawn entirely on canvas as a full futuristic bike with its own stats.
 - **Upgrade shop** – spend coins on 5 levels of Acceleration, Top Speed, Braking, Jump
   and Grip per bike.
 - **Neon rendering** – glowing terrain, particle exhaust, wheel trails, animated grid
@@ -21,11 +21,11 @@ upgrade your machine. Pure HTML5 Canvas + JavaScript, powered by **Matter.js**.
 
 | Action | Keyboard | Touch |
 | ------ | -------- | ----- |
-| Gas | `→` / `D` | green **GAS** button (bottom-right) |
-| Brake / reverse | `←` / `A` | red **BRAKE** button (bottom-left) |
-| Jump | `↑` / `W` | blue **↑** button |
-| Lean back | `Z` / `Q` | ↺ button |
-| Lean forward | `X` / `E` | ↻ button |
+| Gas | `↑` / `W` | green **GAS** button (bottom-right) |
+| Brake / reverse | `↓` / `S` | red **BRAKE** button (bottom-left) |
+| Jump | `Space` | blue **↑** button |
+| Tilt counter-clockwise | `←` / `A` / `Q` | ↺ button |
+| Tilt clockwise | `→` / `D` / `E` | ↻ button |
 | Restart level | `R` | RESTART (HUD) |
 | Back to menu | `Esc` | MENU (HUD) |
 

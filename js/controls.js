@@ -16,11 +16,11 @@
   Controls.prototype._bindKeyboard = function () {
     var self = this;
     var map = {
-      'ArrowRight': 'gas', 'KeyD': 'gas',
-      'ArrowLeft': 'brake', 'KeyA': 'brake',
-      'ArrowUp': 'jump', 'KeyW': 'jump',
-      'KeyZ': 'leanBack', 'KeyQ': 'leanBack',
-      'KeyX': 'leanFwd', 'KeyE': 'leanFwd'
+      'ArrowUp': 'gas', 'KeyW': 'gas',
+      'ArrowDown': 'brake', 'KeyS': 'brake',
+      'ArrowLeft': 'leanBack', 'KeyA': 'leanBack', 'KeyQ': 'leanBack',
+      'ArrowRight': 'leanFwd', 'KeyD': 'leanFwd', 'KeyE': 'leanFwd',
+      'Space': 'jump'
     };
     global.addEventListener('keydown', function (e) {
       if (map[e.code] !== undefined) {
