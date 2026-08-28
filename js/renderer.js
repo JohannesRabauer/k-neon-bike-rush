@@ -46,8 +46,9 @@
     var ctx = this.ctx, w = this.width, h = this.height;
     var g = ctx.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, '#05050f');
-    g.addColorStop(0.55, '#080814');
-    g.addColorStop(1, '#0a0a1a');
+    g.addColorStop(0.48, '#10101d');
+    g.addColorStop(0.82, '#1f1420');
+    g.addColorStop(1, '#2a1b15');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
@@ -120,6 +121,7 @@
     var ctx = this.ctx;
     var pts = level.terrain;
     var color = level.color;
+    var surface = level.surface || {};
     var bottom = level.groundY + 700;
 
     // Split into continuous runs (gaps break the run)
@@ -144,36 +146,43 @@
       ctx.lineTo(rp[rp.length - 1][0], bottom);
       ctx.lineTo(rp[0][0], bottom);
       ctx.closePath();
-      var fg = ctx.createLinearGradient(0, level.groundY - 100, 0, bottom);
-      fg.addColorStop(0, Bikes.hexA(color, 0.10));
-      fg.addColorStop(1, 'rgba(3,4,12,0.9)');
+      var fg = ctx.createLinearGradient(0, level.groundY - 120, 0, bottom);
+      fg.addColorStop(0, surface.sand || '#c49a62');
+      fg.addColorStop(0.18, surface.dirt || '#775333');
+      fg.addColorStop(1, surface.dirtDark || '#25180f');
       ctx.fillStyle = fg;
       ctx.fill();
 
-      // Neon top line: dark thick then bright thin with glow
+      // Compacted dirt top with a subtle futuristic edge
       ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(rp[0][0], rp[0][1]);
       for (var k = 1; k < rp.length; k++) ctx.lineTo(rp[k][0], rp[k][1]);
 
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-      ctx.lineWidth = 9;
+      ctx.strokeStyle = 'rgba(34,21,13,0.92)';
+      ctx.lineWidth = 10;
       ctx.stroke();
 
-      ctx.shadowBlur = 22;
+      ctx.strokeStyle = surface.sand || '#c49a62';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.shadowBlur = 16;
       ctx.shadowColor = color;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3.5;
-      ctx.stroke();
-
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.2;
-      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = Bikes.hexA(color, 0.55);
+      ctx.lineWidth = 1.8;
+      ctx.globalAlpha = 0.9;
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
+
+      for (var s = 1; s < rp.length; s += 3) {
+        ctx.fillStyle = surface.accent || '#8d653a';
+        ctx.beginPath();
+        ctx.arc(rp[s][0], rp[s][1] + 6, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   };
 
@@ -184,7 +193,7 @@
       var d = decos[i];
       ctx.save();
       ctx.globalAlpha = 0.5;
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 14;
       ctx.shadowColor = d.color;
       ctx.strokeStyle = d.color;
       ctx.fillStyle = Bikes.hexA(d.color, 0.08);
@@ -206,6 +215,8 @@
         ctx.lineTo(d.x + d.size, d.y);
         ctx.stroke();
       }
+      ctx.fillStyle = 'rgba(40,24,16,0.45)';
+      ctx.fillRect(d.x - 18, level.groundY + 8, 36, 8);
       ctx.restore();
     }
   };

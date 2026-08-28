@@ -10,38 +10,50 @@
     {
       id: 0,
       name: 'Crimson Flash',
-      style: 'aggressive',
+      style: 'streetfighter',
       color: '#ff003c',
       glow: '#ff6680',
-      desc: 'Aggressive angular racer with punchy acceleration.',
-      stats: { acceleration: 1.15, topSpeed: 1.0, braking: 0.95, jump: 1.0, grip: 0.95 }
+      metal: '#aab3c7',
+      seat: '#121524',
+      desc: 'Streetfighter with a compact frame and hard acceleration.',
+      stats: { acceleration: 1.15, topSpeed: 1.0, braking: 0.95, jump: 1.0, grip: 0.95 },
+      geometry: { tailLift: 9, tankLength: 23, noseReach: 15, forkRake: 1.0, seatDrop: 2 }
     },
     {
       id: 1,
       name: 'Teal Storm',
-      style: 'aero',
+      style: 'superbike',
       color: '#00ffff',
       glow: '#80ffff',
-      desc: 'Sleek aerodynamic bike built for top speed.',
-      stats: { acceleration: 1.0, topSpeed: 1.2, braking: 1.0, jump: 0.95, grip: 1.0 }
+      metal: '#c3d1dd',
+      seat: '#0f1520',
+      desc: 'Low superbike with long fairings built for high-speed stability.',
+      stats: { acceleration: 1.0, topSpeed: 1.2, braking: 1.0, jump: 0.95, grip: 1.0 },
+      geometry: { tailLift: 7, tankLength: 27, noseReach: 19, forkRake: 1.15, seatDrop: 0 }
     },
     {
       id: 2,
       name: 'Violet Phantom',
-      style: 'chopper',
+      style: 'scrambler',
       color: '#bf00ff',
       glow: '#df80ff',
-      desc: 'Wide chopper with monster grip and heavy braking.',
-      stats: { acceleration: 0.95, topSpeed: 0.95, braking: 1.2, jump: 0.95, grip: 1.2 }
+      metal: '#b7afc8',
+      seat: '#171322',
+      desc: 'Tall scrambler with longer suspension and heavy grip.',
+      stats: { acceleration: 0.95, topSpeed: 0.95, braking: 1.2, jump: 0.95, grip: 1.2 },
+      geometry: { tailLift: 11, tankLength: 21, noseReach: 12, forkRake: 0.92, seatDrop: -2 }
     },
     {
       id: 3,
       name: 'Solar Blaze',
-      style: 'sport',
+      style: 'hyperbike',
       color: '#ffee00',
       glow: '#fff380',
-      desc: 'Compact sporty bike that jumps sky-high.',
-      stats: { acceleration: 1.05, topSpeed: 1.05, braking: 1.0, jump: 1.25, grip: 1.05 }
+      metal: '#d5ca8d',
+      seat: '#19160e',
+      desc: 'Futuristic hyperbike with agile geometry and huge jump energy.',
+      stats: { acceleration: 1.05, topSpeed: 1.05, braking: 1.0, jump: 1.25, grip: 1.05 },
+      geometry: { tailLift: 8, tankLength: 25, noseReach: 18, forkRake: 1.05, seatDrop: 1 }
     }
   ];
 
@@ -58,7 +70,6 @@
       return UPGRADE_COSTS[currentLevel];
     },
 
-    // Effective stat = base * (1 + 0.12 * upgradeLevel)
     effectiveStats: function (bikeIndex) {
       var def = DEFS[bikeIndex];
       var up = global.Save.getUpgrades(bikeIndex);
@@ -69,190 +80,297 @@
       return out;
     },
 
-    // ---------- Canvas drawing ----------
-    // Draws bike centered at (0,0), facing right, chassis width ~ 90.
-    // ctx should already be translated/rotated by the renderer. wheelBase in px.
     draw: function (ctx, bikeIndex, opts) {
       opts = opts || {};
       var def = DEFS[bikeIndex];
-      var color = def.color, glow = def.glow;
-      var wb = opts.wheelBase || 70;   // distance between wheels
-      var wr = opts.wheelRadius || 18; // wheel radius
-      var pulse = opts.pulse || 0;     // 0..1 engine glow pulse
+      var geo = def.geometry || {};
+      var color = def.color;
+      var glow = def.glow;
+      var metal = def.metal || '#b8c0cf';
+      var seat = def.seat || '#11151f';
+      var wb = opts.wheelBase || 70;
+      var wr = opts.wheelRadius || 18;
+      var pulse = opts.pulse || 0;
       var frontAngle = opts.frontWheelAngle || 0;
       var rearAngle = opts.rearWheelAngle || 0;
 
-      var xF = wb / 2, xR = -wb / 2, yW = wr; // wheel centers
+      var xF = wb / 2;
+      var xR = -wb / 2;
+      var yW = wr;
+      var top = yW - wr - 16 + (geo.seatDrop || 0);
+      var seatY = top - 1;
+      var tankY = top - 7;
+      var headX = xF - 6;
+      var engineY = yW - 12;
+      var pulseMix = 0.18 + pulse * 0.35;
 
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
-      // Engine glow underneath
-      var glowR = 26 + pulse * 10;
-      var g = ctx.createRadialGradient(0, yW, 0, 0, yW, glowR);
-      g.addColorStop(0, hexA(glow, 0.55));
-      g.addColorStop(1, hexA(glow, 0));
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(0, yW - 2, glowR, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Wheels
-      drawWheel(ctx, xR, yW, wr, color, glow, rearAngle);
-      drawWheel(ctx, xF, yW, wr, color, glow, frontAngle);
-
-      // Chassis body by style
-      ctx.save();
-      ctx.shadowBlur = 16;
-      ctx.shadowColor = color;
-      ctx.lineWidth = 3.2;
-      ctx.strokeStyle = color;
-      ctx.fillStyle = hexA(color, 0.14);
-
-      if (def.style === 'aggressive') drawAggressive(ctx, xF, xR, yW, wr);
-      else if (def.style === 'aero') drawAero(ctx, xF, xR, yW, wr);
-      else if (def.style === 'chopper') drawChopper(ctx, xF, xR, yW, wr);
-      else drawSport(ctx, xF, xR, yW, wr);
-
-      ctx.restore();
-
-      // Rider silhouette
-      drawRider(ctx, 0, yW, wr, glow);
+      drawBikeGlow(ctx, 0, yW - 2, 24 + pulse * 8, glow);
+      drawWheel(ctx, xR, yW, wr, color, glow, rearAngle, metal);
+      drawWheel(ctx, xF, yW, wr, color, glow, frontAngle, metal);
+      drawSuspension(ctx, xR, yW, headX, top + 6, metal, glow, 0.92);
+      drawSuspension(ctx, xF, yW, headX + geo.noseReach, tankY + 2, metal, glow, geo.forkRake || 1);
+      drawFrame(ctx, xR, xF, yW, top, tankY, headX, engineY, color, glow, metal, geo);
+      drawBodywork(ctx, xR, xF, seatY, tankY, color, glow, metal, seat, geo, pulseMix);
+      drawEngine(ctx, 0, engineY, color, glow, metal);
+      drawExhaust(ctx, xR, yW, seatY, metal, color, geo);
+      drawHandlebar(ctx, headX + geo.noseReach, tankY - 2, color, glow, metal);
     }
   };
 
-  function drawWheel(ctx, cx, cy, r, color, glow, angle) {
+  function drawBikeGlow(ctx, x, y, r, glow) {
+    ctx.save();
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, hexA(glow, 0.42));
+    g.addColorStop(1, hexA(glow, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWheel(ctx, cx, cy, r, color, glow, angle, metal) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(angle);
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = glow;
-    // Tire
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = color;
+
+    ctx.fillStyle = '#13161f';
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-    // Hub
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2);
     ctx.fill();
-    // Spokes
-    ctx.lineWidth = 1.6;
-    ctx.strokeStyle = hexA(glow, 0.8);
-    for (var i = 0; i < 5; i++) {
-      var a = (i / 5) * Math.PI * 2;
+
+    ctx.lineWidth = Math.max(3, r * 0.25);
+    ctx.strokeStyle = '#090b11';
+    ctx.beginPath();
+    ctx.arc(0, 0, r - ctx.lineWidth * 0.25, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = glow;
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = metal;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#4e5667';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = hexA('#ffffff', 0.38);
+    ctx.lineWidth = 1.2;
+    for (var i = 0; i < 6; i++) {
+      var a = angle * 0.18 + (i / 6) * Math.PI * 2;
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(a) * r * 0.85, Math.sin(a) * r * 0.85);
+      ctx.moveTo(Math.cos(a) * r * 0.18, Math.sin(a) * r * 0.18);
+      ctx.lineTo(Math.cos(a) * r * 0.56, Math.sin(a) * r * 0.56);
       ctx.stroke();
     }
+
     ctx.restore();
   }
 
-  function drawAggressive(ctx, xF, xR, yW, wr) {
-    var top = yW - wr - 14;
-    ctx.beginPath();
-    ctx.moveTo(xR + 4, yW - 4);
-    ctx.lineTo(xR + 10, top + 6);
-    ctx.lineTo(-6, top - 6);
-    ctx.lineTo(xF - 6, top + 2);
-    ctx.lineTo(xF + 8, top + 12);
-    ctx.lineTo(xF, yW - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // seat spike
-    ctx.beginPath();
-    ctx.moveTo(xR + 8, top + 4);
-    ctx.lineTo(xR - 6, top - 4);
-    ctx.lineTo(xR + 2, top + 8);
-    ctx.stroke();
-  }
-
-  function drawAero(ctx, xF, xR, yW, wr) {
-    var top = yW - wr - 12;
-    ctx.beginPath();
-    ctx.moveTo(xR, yW - 6);
-    ctx.quadraticCurveTo(xR - 4, top, -2, top - 4);
-    ctx.quadraticCurveTo(xF * 0.6, top - 8, xF + 10, top + 6);
-    ctx.quadraticCurveTo(xF + 12, yW - 8, xF, yW - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // windscreen
-    ctx.beginPath();
-    ctx.moveTo(xF - 2, top - 2);
-    ctx.lineTo(xF + 14, top - 8);
-    ctx.stroke();
-  }
-
-  function drawChopper(ctx, xF, xR, yW, wr) {
-    var top = yW - wr - 10;
-    ctx.beginPath();
-    ctx.moveTo(xR - 4, yW - 4);
-    ctx.lineTo(xR + 6, top);
-    ctx.lineTo(0, top - 2);
-    ctx.lineTo(xF - 4, top);
-    ctx.lineTo(xF + 16, top - 14); // long front fork
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(xR + 6, top);
-    ctx.lineTo(xF - 4, top);
-    ctx.lineTo(xF - 4, yW - 4);
-    ctx.lineTo(xR - 4, yW - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  function drawSport(ctx, xF, xR, yW, wr) {
-    var top = yW - wr - 13;
-    ctx.beginPath();
-    ctx.moveTo(xR + 2, yW - 6);
-    ctx.lineTo(xR + 8, top + 2);
-    ctx.lineTo(-2, top - 2);
-    ctx.lineTo(xF - 4, top);
-    ctx.lineTo(xF + 6, top + 8);
-    ctx.lineTo(xF - 2, yW - 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // little tail fin
-    ctx.beginPath();
-    ctx.moveTo(xR + 6, top + 2);
-    ctx.lineTo(xR - 4, top - 6);
-    ctx.stroke();
-  }
-
-  function drawRider(ctx, cx, yW, wr, glow) {
-    var hip = yW - wr - 12;
+  function drawSuspension(ctx, wheelX, wheelY, topX, topY, metal, glow, rake) {
     ctx.save();
-    ctx.strokeStyle = glow;
     ctx.shadowBlur = 10;
     ctx.shadowColor = glow;
+    ctx.strokeStyle = metal;
     ctx.lineWidth = 3;
-    // torso
     ctx.beginPath();
-    ctx.moveTo(cx - 6, hip);
-    ctx.lineTo(cx + 6, hip - 16);
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(wheelX + (topX - wheelX) * 0.22 * rake, wheelY - 5);
     ctx.stroke();
-    // arm to handlebar
+    ctx.strokeStyle = '#636d82';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(cx + 6, hip - 16);
-    ctx.lineTo(cx + 20, hip - 4);
+    ctx.moveTo(topX + 3, topY + 1);
+    ctx.lineTo(wheelX + (topX - wheelX) * 0.34 * rake, wheelY - 2);
     ctx.stroke();
-    // head
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(cx + 8, hip - 22, 5, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
   }
 
-  // hex + alpha helper -> rgba string
+  function drawFrame(ctx, xR, xF, yW, top, tankY, headX, engineY, color, glow, metal, geo) {
+    var seatX = xR + 18;
+    var pivotX = -4;
+    ctx.save();
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = glow;
+    ctx.lineWidth = 3.4;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = hexA(color, 0.16);
+
+    ctx.beginPath();
+    ctx.moveTo(xR + 6, yW - 2);
+    ctx.lineTo(seatX, top + 8);
+    ctx.lineTo(headX + geo.tankLength, tankY + 2);
+    ctx.lineTo(xF - 2, yW - 2);
+    ctx.lineTo(pivotX, engineY + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(xR + 3, yW - 1);
+    ctx.lineTo(pivotX, engineY + 6);
+    ctx.lineTo(headX + 10, tankY + 3);
+    ctx.lineTo(headX + geo.tankLength, tankY + 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(pivotX, engineY + 6);
+    ctx.lineTo(xF - 6, yW - 1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBodywork(ctx, xR, xF, seatY, tankY, color, glow, metal, seat, geo, pulseMix) {
+    var seatStart = xR + 10;
+    var seatEnd = seatStart + 28;
+    var tankFront = xF - 6;
+    ctx.save();
+
+    ctx.fillStyle = seat;
+    ctx.beginPath();
+    ctx.moveTo(seatStart, seatY + 3);
+    ctx.quadraticCurveTo(seatStart + 11, seatY - geo.tailLift, seatEnd, seatY + 1);
+    ctx.lineTo(seatEnd - 1, seatY + 8);
+    ctx.quadraticCurveTo(seatStart + 10, seatY + 7, seatStart - 3, seatY + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    var tankGrad = ctx.createLinearGradient(0, tankY - 8, 0, tankY + 18);
+    tankGrad.addColorStop(0, hexA('#ffffff', pulseMix));
+    tankGrad.addColorStop(0.3, hexA(color, 0.9));
+    tankGrad.addColorStop(1, hexA(color, 0.34));
+    ctx.fillStyle = tankGrad;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = glow;
+    ctx.beginPath();
+    ctx.moveTo(seatEnd - 4, seatY + 4);
+    ctx.quadraticCurveTo(seatEnd + 6, tankY - 2, tankFront - geo.noseReach, tankY + 2);
+    ctx.quadraticCurveTo(tankFront + 2, tankY + 12, seatEnd + 8, seatY + 10);
+    ctx.quadraticCurveTo(seatEnd, seatY + 9, seatEnd - 4, seatY + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = metal;
+    ctx.beginPath();
+    ctx.moveTo(xF - 10, tankY + 3);
+    ctx.lineTo(xF + geo.noseReach - 2, tankY + 8);
+    ctx.lineTo(xF + geo.noseReach - 9, tankY + 15);
+    ctx.lineTo(xF - 6, tankY + 13);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#0d1018';
+    ctx.beginPath();
+    ctx.moveTo(xF + geo.noseReach - 12, tankY + 8);
+    ctx.lineTo(xF + geo.noseReach - 3, tankY + 9);
+    ctx.lineTo(xF + geo.noseReach - 9, tankY + 13);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = hexA('#ffffff', 0.4);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(seatEnd + 2, tankY + 1);
+    ctx.quadraticCurveTo(xF - 6, tankY - 5, tankFront - geo.noseReach + 3, tankY + 3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEngine(ctx, x, y, color, glow, metal) {
+    ctx.save();
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = glow;
+    ctx.fillStyle = '#161a23';
+    roundRect(ctx, x - 14, y - 11, 28, 22, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#2f3645';
+    roundRect(ctx, x - 10, y - 7, 20, 14, 4);
+    ctx.fill();
+
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - 2);
+    ctx.lineTo(x + 8, y - 2);
+    ctx.moveTo(x - 8, y + 2);
+    ctx.lineTo(x + 8, y + 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y + 10);
+    ctx.lineTo(x + 12, y + 10);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawExhaust(ctx, xR, yW, seatY, metal, color, geo) {
+    ctx.save();
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-2, yW + 2);
+    ctx.quadraticCurveTo(xR + 6, yW + 8, xR - 4, seatY + 14);
+    ctx.stroke();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xR - 6, seatY + 14);
+    ctx.lineTo(xR + 4, seatY + 12 - geo.tailLift * 0.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHandlebar(ctx, x, y, color, glow, metal) {
+    ctx.save();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = glow;
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y + 2);
+    ctx.lineTo(x + 6, y - 5);
+    ctx.lineTo(x + 11, y - 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y - 5);
+    ctx.lineTo(x + 11, y - 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
   function hexA(hex, a) {
     var h = hex.replace('#', '');
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
